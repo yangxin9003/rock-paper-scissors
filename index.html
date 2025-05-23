@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>石头剪刀布游戏</title>
+</head>
+<body>
+    <div class="container">
+        <h1>石头剪刀布游戏</h1>
+
+        <div class="game-area">
+            <div class="player-side">
+                <h2>我方</h2>
+                <div class="slots player-slots" id="player-slots">
+                    <!-- 玩家的槽位将在这里动态生成 -->
+                </div>
+                <div class="controls">
+                    <button id="shuffle-btn">随机生成</button>
+                    <button id="swap-btn" disabled>调整排布</button>
+                    <p id="swap-info">剩余调整次数: <span id="swaps-left">0</span></p>
+                </div>
+            </div>
+
+            <div class="enemy-side">
+                <h2>敌方</h2>
+                <div class="slots enemy-slots" id="enemy-slots">
+                    <!-- 敌方的槽位将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="battle-controls">
+            <button id="start-battle" disabled>开始对战</button>
+            <button id="reset-game">重新开始</button>
+        </div>
+
+        <div class="battle-log">
+            <h3>对战记录</h3>
+            <div id="battle-log-content"></div>
+        </div>
+
+        <!-- 战斗动画容器 - 内容将在JS中动态生成 -->
+        <div id="battle-animation-container" class="battle-animation-container"></div>
+
+        <div id="swap-modal" class="modal">
+            <div class="modal-content">
+                <h3>调整排布</h3>
+                <p>选择两个槽位进行交换</p>
+                <div class="swap-slots" id="swap-slots">
+                    <!-- 玩家的槽位将在这里动态生成用于交换 -->
+                </div>
+                <div class="modal-controls">
+                    <button id="confirm-swap" disabled>确认交换</button>
+                    <button id="cancel-swap">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="result-modal" class="modal">
+            <div class="modal-content">
+                <h2 id="result-message"></h2>
+                <p>点击确定查看详细对战结果和最终的剩余状态</p>
+                <button id="close-result">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
