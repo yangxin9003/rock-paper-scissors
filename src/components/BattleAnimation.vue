@@ -104,21 +104,12 @@
 
   <script setup lang="ts">
   import { defineProps, defineEmits, computed, ref, watch } from 'vue';
-  import { HandType } from '../types';
+  import { HandType, BattleRound } from '../types';
 
-  // 定义回合数据类型
-  interface RoundData {
-    round: number;
-    playerHand: HandType;
-    enemyHand: HandType;
-    result: string;
-    remainingPlayerHands: HandType[];
-    remainingEnemyHands: HandType[];
-  }
-
+  // 使用RoundData类型
   const props = defineProps<{
     visible: boolean;
-    battleRounds: RoundData[];
+    battleRounds: BattleRound[];
   }>();
 
   const emit = defineEmits<{

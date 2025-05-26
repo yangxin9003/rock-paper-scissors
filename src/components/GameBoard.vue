@@ -51,12 +51,16 @@
         <h2>敌方</h2>
         <div class="slots enemy-slots">
           <SlotItem
-            v-for="(hand, index) in gameStore.enemySlots"
+            v-for="(hand, index) in gameStore.maskedEnemySlots"
             :key="index"
             :hand="hand"
             :index="index"
             type="enemy"
           />
+        </div>
+        <div v-if="hasMaskedHands" class="mask-info">
+          <span class="mask-icon">❓</span>
+          <p>敌人使用了 {{ maskedCount }} 个遮罩隐藏手势<br>战斗开始后才能看到全部</p>
         </div>
       </div>
     </div>
@@ -104,7 +108,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useGameStore } from '../stores/gameStore';
-import { HandType, BattleResult } from '../types';
+import { HandType, BattleResult, BattleRound } from '../types';
 import SlotItem from './SlotItem.vue';
 import BattleLog from './BattleLog.vue';
 import BattleAnimation from './BattleAnimation.vue';
@@ -122,14 +126,7 @@ const battleAnimationVisible = ref(false);
 const battleResult = ref<BattleResult | null>(null);
 
 // 战斗回合数据
-const battleRounds = ref<Array<{
-  round: number;
-  playerHand: HandType;
-  enemyHand: HandType;
-  result: string;
-  remainingPlayerHands: HandType[];
-  remainingEnemyHands: HandType[];
-}>>([]);
+const battleRounds = ref<BattleRound[]>([]);
 
 // 计算血量百分比
 const playerHPPercent = computed(() => {
@@ -145,6 +142,16 @@ const canStartBattle = computed(() => {
   return gameStore.playerSlots.length > 0 &&
          gameStore.enemySlots.length > 0 &&
          !gameStore.battleStarted;
+});
+
+// 是否有被遮罩的手势
+const hasMaskedHands = computed(() => {
+  return gameStore.maskedEnemySlots.some(hand => hand === HandType.Masked);
+});
+
+// 计算被遮罩的手势数量
+const maskedCount = computed(() => {
+  return gameStore.maskedEnemySlots.filter(hand => hand === HandType.Masked).length;
 });
 
 // 初始化游戏
@@ -175,80 +182,18 @@ const continueGame = () => {
   battleRounds.value = [];
 };
 
-// 模拟单回合战斗
-const simulateBattleRound = (
-  playerHand: HandType,
-  enemyHand: HandType,
-  playerHandsCopy: HandType[],
-  enemyHandsCopy: HandType[],
-  round: number
-) => {
-  // 判断胜负
-  const result = gameStore.determineWinner(playerHand, enemyHand);
-
-  // 根据胜负创建结果后的手牌数组副本
-  const newPlayerHands = [...playerHandsCopy];
-  const newEnemyHands = [...enemyHandsCopy];
-
-  if (result === 'player') {
-    // 玩家胜：玩家保留手势，敌人失去手势
-    newEnemyHands.shift();
-  } else if (result === 'enemy') {
-    // 敌人胜：敌人保留手势，玩家失去手势
-    newPlayerHands.shift();
-  } else {
-    // 平局：双方都失去手势
-    newPlayerHands.shift();
-    newEnemyHands.shift();
-  }
-
-  // 返回本回合结果
-  return {
-    round,
-    playerHand,
-    enemyHand,
-    result,
-    remainingPlayerHands: newPlayerHands,
-    remainingEnemyHands: newEnemyHands
-  };
+// 当回合播放完成时的回调
+const onRoundComplete = (round: number) => {
+  // 这里可以添加回合播放完成的逻辑
+  // 例如更新界面其他部分，播放音效等
 };
 
 // 开始战斗
 const startBattle = () => {
   if (!canStartBattle.value) return;
 
-  // 重置战斗回合数据
-  battleRounds.value = [];
-
-  // 拷贝初始手势状态
-  let playerHandsCopy = [...gameStore.playerSlots];
-  let enemyHandsCopy = [...gameStore.enemySlots];
-  let round = 1;
-
-  // 预先计算所有回合数据
-  while (playerHandsCopy.length > 0 && enemyHandsCopy.length > 0) {
-    // 获取双方的当前手势（始终是第一个）
-    const playerHand = playerHandsCopy[0];
-    const enemyHand = enemyHandsCopy[0];
-
-    // 模拟本回合并获取结果
-    const roundResult = simulateBattleRound(
-      playerHand,
-      enemyHand,
-      playerHandsCopy,
-      enemyHandsCopy,
-      round
-    );
-
-    // 添加到回合数据
-    battleRounds.value.push(roundResult);
-
-    // 更新手牌状态为下一回合
-    playerHandsCopy = roundResult.remainingPlayerHands;
-    enemyHandsCopy = roundResult.remainingEnemyHands;
-
-    round++;
-  }
+  // 使用gameStore中的方法准备战斗回合数据
+  battleRounds.value = gameStore.prepareBattleRounds();
 
   // 标记战斗开始
   gameStore.battleStarted = true;
@@ -261,12 +206,6 @@ const startBattle = () => {
     // 如果没有回合数据（极少情况），直接获取最终结果
     finalizeBattle();
   }
-};
-
-// 当回合播放完成时的回调
-const onRoundComplete = (round: number) => {
-  // 这里可以添加回合播放完成的逻辑
-  // 例如更新界面其他部分，播放音效等
 };
 
 // 关闭战斗动画
@@ -474,5 +413,38 @@ button:disabled {
   margin-top: 10px;
   font-size: 0.9rem;
   color: #666;
+}
+
+.mask-info {
+  text-align: center;
+  margin-top: 10px;
+  padding: 8px;
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px dashed #FFC107;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.mask-icon {
+  font-size: 1.8rem;
+  color: #FF9800;
+  margin-bottom: 5px;
+  animation: pulsate 1.5s infinite ease-in-out;
+}
+
+@keyframes pulsate {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.mask-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.4;
 }
 </style>

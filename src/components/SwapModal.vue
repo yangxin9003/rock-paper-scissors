@@ -4,15 +4,15 @@
       <h3>调整排布</h3>
       <p>选择两个槽位进行交换</p>
       <div class="swap-slots">
-        <SlotItem
+        <div
           v-for="(hand, index) in playerSlots"
           :key="index"
-          :hand="hand"
-          :index="index"
-          type="swap"
-          :selected="selectedSlots.includes(index)"
-          @click="selectSlot"
-        />
+          class="swap-slot-item"
+          :class="{ 'selected': selectedSlots.includes(index) }"
+          @click="selectSlot(index)"
+        >
+          <span class="hand">{{ hand }}</span>
+        </div>
       </div>
       <div class="modal-controls">
         <button
@@ -30,7 +30,6 @@
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue';
 import { HandType } from '../types';
-import SlotItem from './SlotItem.vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -91,6 +90,35 @@ const cancel = () => {
   justify-content: center;
   flex-wrap: wrap;
   margin: 20px 0;
+}
+
+.swap-slot-item {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 5px;
+  cursor: pointer;
+  background-color: rgba(76, 175, 80, 0.1);
+  transition: all 0.2s;
+}
+
+.swap-slot-item:hover {
+  background-color: rgba(76, 175, 80, 0.2);
+}
+
+.swap-slot-item.selected {
+  background-color: rgba(76, 175, 80, 0.3);
+  transform: scale(1.05);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+  border-color: #2E7D32;
+}
+
+.hand {
+  font-size: 2rem;
 }
 
 .modal-controls {

@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia';
-import { HandType, GameState, BattleResult } from '../types';
+import { HandType, GameState, BattleResult, BattleRound } from '../types';
 
 // 初始配置
 const INITIAL_SLOTS = 4;
 const INITIAL_HP = 4;
+const MAX_LEVEL_SCALE = 3; // 第三关之后不再增加血量和槽位
+const MASK_START_LEVEL = 3; // 从第三关开始引入遮罩
 
 export const useGameStore = defineStore('game', {
   state: (): GameState => ({
@@ -22,7 +24,10 @@ export const useGameStore = defineStore('game', {
     maxPlayerHP: INITIAL_HP,
     maxEnemyHP: INITIAL_HP,
     gameOver: false,
-    canContinue: false
+    canContinue: false,
+    // 遮罩相关
+    maskedEnemySlots: [],
+    revealMasks: false
   }),
 
   actions: {
@@ -43,6 +48,9 @@ export const useGameStore = defineStore('game', {
       this.maxEnemyHP = INITIAL_HP;
       this.gameOver = false;
       this.canContinue = false;
+      // 重置遮罩状态
+      this.maskedEnemySlots = [];
+      this.revealMasks = false;
 
       // 生成初始手势
       this.generateRandomSlots();
@@ -53,10 +61,13 @@ export const useGameStore = defineStore('game', {
       this.level++;
       this.battleLog = [];
 
-      // 敌人血量和槽位数量+1
-      this.maxEnemyHP = INITIAL_HP + (this.level - 1);
+      // 仅在前MAX_LEVEL_SCALE关增加敌人槽位数量
+      if (this.level <= MAX_LEVEL_SCALE) {
+        this.maxEnemyHP = INITIAL_HP + (this.level - 1);
+      }
       this.enemyHP = this.maxEnemyHP;
-
+      // 设计玩家血量
+      this.maxPlayerHP = INITIAL_HP + (this.level - 1);
       // 恢复玩家血量
       this.playerHP = this.maxPlayerHP;
 
@@ -64,12 +75,18 @@ export const useGameStore = defineStore('game', {
       this.battleStarted = false;
       this.swapsLeft = this.maxSwaps;
       this.canContinue = false;
+      this.revealMasks = false;
 
       // 生成新的手势
       this.generateRandomSlots();
 
       // 记录关卡变化
-      this.addToBattleLog(`进入第 ${this.level} 关！敌人血量增加到 ${this.enemyHP}`, 'level');
+      if (this.level >= MASK_START_LEVEL) {
+        const masksCount = this.level - MASK_START_LEVEL + 1;
+        this.addToBattleLog(`进入第 ${this.level} 关！敌人使用了 ${masksCount} 个遮罩隐藏手势`, 'level');
+      } else {
+        this.addToBattleLog(`进入第 ${this.level} 关！敌人血量增加到 ${this.enemyHP}`, 'level');
+      }
     },
 
     // 继续游戏，为下一轮战斗准备
@@ -77,6 +94,7 @@ export const useGameStore = defineStore('game', {
       this.battleStarted = false;
       this.swapsLeft = this.maxSwaps;
       this.canContinue = false;
+      this.revealMasks = false;
 
       // 生成新的手势
       this.generateRandomSlots();
@@ -97,11 +115,44 @@ export const useGameStore = defineStore('game', {
       // 玩家始终有4个槽位
       this.playerSlots = Array(INITIAL_SLOTS).fill(null).map(() => this.getRandomHand());
 
-      // 敌人槽位数量随关卡增加
-      const enemySlots = INITIAL_SLOTS + (this.level - 1);
+      // 敌人槽位数量在前MAX_LEVEL_SCALE关随关卡增加，之后保持不变
+      const enemySlots = Math.min(INITIAL_SLOTS + (this.level - 1), INITIAL_SLOTS + (MAX_LEVEL_SCALE - 1));
       this.enemySlots = Array(enemySlots).fill(null).map(() => this.getRandomHand());
 
+      // 生成遮罩
+      this.generateMaskedEnemySlots();
+
       this.swapsLeft = this.maxSwaps;
+    },
+
+    // 生成带遮罩的敌人手势
+    generateMaskedEnemySlots() {
+      // 复制敌人手势
+      this.maskedEnemySlots = [...this.enemySlots];
+
+      // 如果关卡小于遮罩起始关卡，不添加遮罩
+      if (this.level < MASK_START_LEVEL) {
+        return;
+      }
+
+      // 计算应该添加的遮罩数量
+      const masksCount = this.level - MASK_START_LEVEL + 1;
+
+      // 确保遮罩数量不超过敌人手势数量
+      const actualMasksCount = Math.min(masksCount, this.enemySlots.length);
+
+      // 从敌人手势末尾开始添加遮罩
+      for (let i = 0; i < actualMasksCount; i++) {
+        const index = this.enemySlots.length - 1 - i;
+        if (index >= 0) {
+          this.maskedEnemySlots[index] = HandType.Masked;
+        }
+      }
+    },
+
+    // 揭示敌人手势的遮罩
+    revealEnemyMasks() {
+      this.revealMasks = true;
     },
 
     // 选择要交换的槽位
@@ -163,6 +214,10 @@ export const useGameStore = defineStore('game', {
     startBattle(): BattleResult {
       this.battleStarted = true;
       this.battleLog = [];
+
+      // 在战斗开始时揭示遮罩
+      this.revealEnemyMasks();
+
       this.addToBattleLog(`第 ${this.level} 关 - 开始战斗！`, 'level');
       this.addToBattleLog(`你的HP: ${this.playerHP}/${this.maxPlayerHP} | 敌人HP: ${this.enemyHP}/${this.maxEnemyHP}`, 'hp');
 
@@ -276,6 +331,64 @@ export const useGameStore = defineStore('game', {
     // 设置动画进行中状态
     setAnimationInProgress(value: boolean) {
       this.animationInProgress = value;
+    },
+
+    // 开始战斗前准备回合数据
+    prepareBattleRounds(): BattleRound[] {
+      // 重置回合数据
+      const battleRounds: BattleRound[] = [];
+
+      // 在战斗开始时揭示遮罩
+      this.revealEnemyMasks();
+
+      // 拷贝初始手势状态
+      let playerHandsCopy = [...this.playerSlots];
+      let enemyHandsCopy = [...this.enemySlots]; // 使用真实手势，不是遮罩手势
+      let round = 0;
+
+      // 预先计算所有回合数据
+      while (playerHandsCopy.length > 0 && enemyHandsCopy.length > 0) {
+        round++;
+
+        // 获取双方的当前手势（始终是第一个）
+        const playerHand = playerHandsCopy[0];
+        const enemyHand = enemyHandsCopy[0];
+
+        // 判断胜负
+        const result = this.determineWinner(playerHand, enemyHand);
+
+        // 根据胜负创建结果后的手牌数组副本
+        const newPlayerHands = [...playerHandsCopy];
+        const newEnemyHands = [...enemyHandsCopy];
+
+        if (result === 'player') {
+          // 玩家胜：玩家保留手势，敌人失去手势
+          newEnemyHands.shift();
+        } else if (result === 'enemy') {
+          // 敌人胜：敌人保留手势，玩家失去手势
+          newPlayerHands.shift();
+        } else {
+          // 平局：双方都失去手势
+          newPlayerHands.shift();
+          newEnemyHands.shift();
+        }
+
+        // 添加到回合数据
+        battleRounds.push({
+          round,
+          playerHand,
+          enemyHand,
+          result,
+          remainingPlayerHands: newPlayerHands,
+          remainingEnemyHands: newEnemyHands
+        });
+
+        // 更新手牌状态为下一回合
+        playerHandsCopy = newPlayerHands;
+        enemyHandsCopy = newEnemyHands;
+      }
+
+      return battleRounds;
     }
   }
 });
