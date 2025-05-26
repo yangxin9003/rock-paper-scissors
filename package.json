@@ -13,7 +13,15 @@
   "license": "ISC",
   "packageManager": "pnpm@8.15.6",
   "homepage": "https://yangxin9003.github.io/rock-paper-scissors",
+  "dependencies": {
+    "vue": "^3.4.5",
+    "pinia": "^2.1.7"
+  },
   "devDependencies": {
+    "@types/node": "^20.10.5",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/compiler-sfc": "^3.4.5",
+    "@vue/runtime-dom": "^3.4.5",
     "typescript": "^5.8.3",
     "vite": "^6.3.5"
   }

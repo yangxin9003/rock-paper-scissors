@@ -1,11 +1,13 @@
 import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { resolve } from 'path';
 
 export default defineConfig({
-  base: '/rock-paper-scissors/', // 设置为你的GitHub仓库名称
-  server: {
-    open: true
+  plugins: [vue()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src')
+    }
   },
-  build: {
-    outDir: 'dist'
-  }
+  base: './'
 });

@@ -1,7 +1,12 @@
+import { createApp } from 'vue';
+import App from './App.vue';
+import pinia from './stores';
 import './style.css';
-import { initGame } from './game';
 
-// 初始化游戏
-document.addEventListener('DOMContentLoaded', () => {
-  initGame();
-});
+const app = createApp(App);
+
+// 使用Pinia
+app.use(pinia);
+
+// 挂载应用
+app.mount('#app');
